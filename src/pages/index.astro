@@ -49,7 +49,7 @@ import "../styles/global.css";
           <label for="to-amount">Bolívares (Bs)</label>
           <div class="input-wrapper">
             <span class="currency-prefix">Bs</span>
-            <input type="number" id="to-amount" placeholder="0.00" step="any" min="0" readonly />
+            <input type="number" id="to-amount" placeholder="0.00" step="any" min="0" />
           </div>
         </div>
 
@@ -97,17 +97,29 @@ import "../styles/global.css";
         const tasa = getRate();
         if (!tasa) return;
 
-        const val = parseFloat(fromInput.value);
-        if (isNaN(val) || val <= 0) {
-          toInput.value = "";
-          setResult("Ingresa un valor");
-          return;
+        if (activeSource === "from") {
+          const val = parseFloat(fromInput.value);
+          if (isNaN(val) || val <= 0) {
+            toInput.value = "";
+            setResult("Ingresa un valor");
+            return;
+          }
+          const bs = val * tasa;
+          toInput.value = fmt(bs);
+          const sym = selected === "USD" ? "$" : "€";
+          setResult(`${sym} ${fmt(val)} = Bs ${fmt(bs)}`);
+        } else {
+          const val = parseFloat(toInput.value);
+          if (isNaN(val) || val <= 0) {
+            fromInput.value = "";
+            setResult("Ingresa un valor");
+            return;
+          }
+          const converted = val / tasa;
+          fromInput.value = fmt(converted);
+          const sym = selected === "USD" ? "$" : "€";
+          setResult(`Bs ${fmt(val)} = ${sym} ${fmt(converted)}`);
         }
-
-        const bs = val * tasa;
-        toInput.value = fmt(bs);
-        const sym = selected === "USD" ? "$" : "€";
-        setResult(`${sym} ${fmt(val)} = Bs ${fmt(bs)}`);
       }
 
       function onFromInput() {
@@ -115,23 +127,18 @@ import "../styles/global.css";
         convert();
       }
 
+      function onToInput() {
+        activeSource = "to";
+        convert();
+      }
+
       function swap() {
         const fromVal = fromInput.value;
-        const toVal = toInput.value.replace(/\./g, "").replace(",", ".");
-        fromInput.value = toVal ? fmt(parseFloat(toVal)) : "";
-        toInput.value = fromVal ? fmt(parseFloat(fromVal)) : "";
-        if (activeSource === "from") {
-          const tasa = getRate();
-          if (tasa) {
-            const val = parseFloat(fromInput.value);
-            if (!isNaN(val) && val > 0) {
-              const bs = val * tasa;
-              toInput.value = fmt(bs);
-              const sym = selected === "USD" ? "$" : "€";
-              setResult(`${sym} ${fmt(val)} = Bs ${fmt(bs)}`);
-            }
-          }
-        }
+        const toVal = toInput.value;
+        fromInput.value = toVal;
+        toInput.value = fromVal;
+        activeSource = activeSource === "from" ? "to" : "from";
+        convert();
       }
 
       function selectTab(currency) {
@@ -217,6 +224,7 @@ import "../styles/global.css";
         tab.addEventListener("click", () => selectTab(tab.dataset.currency))
       );
       fromInput.addEventListener("input", onFromInput);
+      toInput.addEventListener("input", onToInput);
       document.getElementById("swap-btn").addEventListener("click", swap);
 
       init();
