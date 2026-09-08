@@ -186,7 +186,7 @@ h1 {
 
 .input-wrapper input {
   width: 100%;
-  padding: 0.8rem 0.875rem 0.8rem 2.5rem;
+  padding: 0.8rem 2.75rem 0.8rem 2.5rem;
   border: 1.5px solid #e8e8ed;
   border-radius: var(--radius-sm);
   font-size: 1.125rem;
@@ -212,6 +212,38 @@ h1 {
 
 .input-wrapper input:-webkit-autofill {
   -webkit-box-shadow: 0 0 0 1000px #fafafa inset;
+}
+
+.paste-btn {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.paste-btn:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.paste-btn:active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+.paste-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* ─── Swap ─── */
@@ -243,11 +275,12 @@ h1 {
 
 /* ─── Result ─── */
 .result-box {
+  position: relative;
   text-align: center;
   font-size: 1.35rem;
   font-weight: 700;
   margin-top: 1rem;
-  padding: 1rem;
+  padding: 1rem 2.75rem 1rem 1rem;
   background: var(--green-bg);
   border: 1px solid var(--green-border);
   border-radius: var(--radius-sm);
@@ -258,6 +291,54 @@ h1 {
   word-break: break-word;
   line-height: 1.3;
   color: #1a7a36;
+}
+
+.copy-btn {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--green);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.copy-btn:hover {
+  background: var(--green-bg);
+  color: #1a7a36;
+}
+
+.copy-btn:active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+.copy-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.copy-btn .icon-check {
+  display: none;
+}
+
+.copy-btn.copied {
+  color: var(--green);
+}
+
+.copy-btn.copied .icon-copy {
+  display: none;
+}
+
+.copy-btn.copied .icon-check {
+  display: block;
 }
 
 /* ─── Mobile ─── */
@@ -277,12 +358,12 @@ h1 {
 
   .input-wrapper input {
     font-size: 1rem;
-    padding: 0.7rem 0.75rem 0.7rem 2.25rem;
+    padding: 0.7rem 2.5rem 0.7rem 2.25rem;
   }
 
   .result-box {
     font-size: 1.125rem;
-    padding: 0.85rem;
+    padding: 0.85rem 2.5rem 0.85rem 0.85rem;
     min-height: 3.25rem;
   }
 

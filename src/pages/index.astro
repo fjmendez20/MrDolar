@@ -40,6 +40,12 @@ import "../styles/global.css";
           <div class="input-wrapper">
             <span class="currency-prefix" id="from-symbol">$</span>
             <input type="number" id="from-amount" placeholder="0.00" step="any" min="0" />
+            <button class="paste-btn" id="paste-from" type="button" aria-label="Pegar" title="Pegar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -50,25 +56,43 @@ import "../styles/global.css";
           <div class="input-wrapper">
             <span class="currency-prefix">Bs</span>
             <input type="number" id="to-amount" placeholder="0.00" step="any" min="0" />
+            <button class="paste-btn" id="paste-to" type="button" aria-label="Pegar" title="Pegar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+              </svg>
+            </button>
           </div>
         </div>
 
         <div class="result-box" id="result">
           <span id="result-text">Ingresa un valor</span>
+          <button class="copy-btn" id="copy-btn" type="button" aria-label="Copiar monto en Bs" title="Copiar monto en Bs">
+            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+            <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </button>
         </div>
       </div>
     </main>
 
     <script>
-      const API_URL = "/api/tasa";
+      const API_URL = "/api/tasa/public";
       const CACHE_KEY = "mrdolar_rates";
       const CACHE_TS_KEY = "mrdolar_rates_ts";
 
       const fromInput = document.getElementById("from-amount");
       const toInput = document.getElementById("to-amount");
+      const pasteFromBtn = document.getElementById("paste-from");
+      const pasteToBtn = document.getElementById("paste-to");
       const resultText = document.getElementById("result-text");
       const rateUsd = document.getElementById("rate-usd");
       const rateEur = document.getElementById("rate-eur");
+      const copyBtn = document.getElementById("copy-btn");
       const tabs = document.querySelectorAll(".tab");
       const fromLabel = document.getElementById("from-label");
       const fromSymbol = document.getElementById("from-symbol");
@@ -76,6 +100,7 @@ import "../styles/global.css";
       let rates = { usd: 0, eur: 0 };
       let selected = "USD";
       let activeSource = "from";
+      let lastBsAmount = 0;
 
       function fmt(n) {
         return Number(n).toLocaleString("es-VE", {
@@ -105,6 +130,7 @@ import "../styles/global.css";
             return;
           }
           const bs = val * tasa;
+          lastBsAmount = bs;
           toInput.value = fmt(bs);
           const sym = selected === "USD" ? "$" : "€";
           setResult(`${sym} ${fmt(val)} = Bs ${fmt(bs)}`);
@@ -115,6 +141,7 @@ import "../styles/global.css";
             setResult("Ingresa un valor");
             return;
           }
+          lastBsAmount = val;
           const converted = val / tasa;
           fromInput.value = fmt(converted);
           const sym = selected === "USD" ? "$" : "€";
@@ -139,6 +166,80 @@ import "../styles/global.css";
         toInput.value = fromVal;
         activeSource = activeSource === "from" ? "to" : "from";
         convert();
+      }
+
+      function parsePasteValue(text) {
+        let t = text
+          .trim()
+          .replace(/[$€£]/g, "")
+          .replace(/bs\.?\s*/gi, "")
+          .replace(/\s/g, "");
+        if (!t || !/^[\d.,]+$/.test(t)) return null;
+
+        const dots = (t.match(/\./g) || []).length;
+        const commas = (t.match(/,/g) || []).length;
+
+        if (dots && commas) {
+          t =
+            t.lastIndexOf(".") > t.lastIndexOf(",")
+              ? t.replace(/,/g, "")
+              : t.replace(/\./g, "").replace(",", ".");
+        } else if (commas) {
+          t = t.replace(/,/g, ".");
+        } else if (dots > 1) {
+          t = t.replace(/\./g, "");
+        }
+
+        const num = parseFloat(t);
+        return isNaN(num) ? null : num;
+      }
+
+      async function readClipboardValue() {
+        try {
+          const text = await navigator.clipboard.readText();
+          return parsePasteValue(text);
+        } catch {
+          return null;
+        }
+      }
+
+      async function handlePasteFrom() {
+        const num = await readClipboardValue();
+        if (num == null) return;
+        activeSource = "from";
+        fromInput.value = num;
+        convert();
+      }
+
+      async function handlePasteTo() {
+        const num = await readClipboardValue();
+        if (num == null) return;
+        activeSource = "to";
+        toInput.value = num;
+        convert();
+      }
+
+      function handleNativePaste(input, isTo) {
+        return function (e) {
+          const text = e.clipboardData ? e.clipboardData.getData("text") : "";
+          const num = parsePasteValue(text);
+          if (num == null) return;
+          e.preventDefault();
+          activeSource = isTo ? "to" : "from";
+          input.value = num;
+          convert();
+        };
+      }
+
+      async function handleCopy() {
+        if (!lastBsAmount) return;
+        try {
+          await navigator.clipboard.writeText(fmt(lastBsAmount));
+          copyBtn.classList.add("copied");
+          setTimeout(() => copyBtn.classList.remove("copied"), 1500);
+        } catch {
+          setResult("No se pudo copiar", true);
+        }
       }
 
       function selectTab(currency) {
@@ -225,7 +326,12 @@ import "../styles/global.css";
       );
       fromInput.addEventListener("input", onFromInput);
       toInput.addEventListener("input", onToInput);
+      fromInput.addEventListener("paste", handleNativePaste(fromInput, false));
+      toInput.addEventListener("paste", handleNativePaste(toInput, true));
       document.getElementById("swap-btn").addEventListener("click", swap);
+      pasteFromBtn.addEventListener("click", handlePasteFrom);
+      pasteToBtn.addEventListener("click", handlePasteTo);
+      copyBtn.addEventListener("click", handleCopy);
 
       init();
     </script>
