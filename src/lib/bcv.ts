@@ -5,6 +5,12 @@ export function fetchBCV(): Promise<string> {
     const req = https.get(
       "https://www.bcv.org.ve/",
       {
+        // NO QUITAR sin probar contra https://www.bcv.org.ve/ real.
+        // El BCV envía solo su cert leaf (*.bcv.org.ve), no la cadena
+        // intermedia (emisor: "Sectigo Public Server Authentication CA DV
+        // R36"). Windows resuelve el intermedio vía AIA; Node no, y falla con
+        // UNABLE_TO_VERIFY_LEAF_SIGNATURE. Sin este flag, getRates() devuelve
+        // {usd: null, eur: null} silenciosamente.
         agent: new https.Agent({ rejectUnauthorized: false }),
         headers: {
           "User-Agent":
@@ -33,14 +39,18 @@ export function fetchBCV(): Promise<string> {
 export function extractTasa(html: string, currency: string): number | null {
   const blockRe =
     /<div[^>]*recuadrotsmc[^>]*>[\s\S]*?<\/div>\s*<\/div>(?:\s*<\/div>)?/gs;
+  // El código aparece como `<span> EUR </span>` (con espacios). Antes se usaba
+  // `includes(currency)`, que es un match por substring y podría dar falsos
+  // positivos; ahora exigimos el span completo.
+  const codeRe = new RegExp(`<span[^>]*>\\s*${currency}\\s*</span>`);
   const blocks = html.matchAll(blockRe);
 
   for (const block of blocks) {
-    if (block[0].includes(currency)) {
+    if (codeRe.test(block[0])) {
       const tbRe =
         /<strong[^>]*class="strong-tb"[^>]*>\s*([\d.,]+)\s*<\/strong>/s;
       const tb = block[0].match(tbRe);
-      if (!tb) return null;
+      if (!tb) continue;
       const raw = tb[1].trim();
       const normalized = raw.replace(/\./g, "").replace(",", ".");
       const tasa = parseFloat(normalized);

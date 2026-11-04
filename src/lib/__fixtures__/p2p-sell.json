@@ -1,0 +1,125 @@
+{
+    "success":  true,
+    "data":  [
+                 {
+                     "adv":  {
+                                 "price":  "1007.400",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1005.200",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1005.000",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1004.117",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1004.000",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1003.500",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1003.150",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1002.850",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1002.520",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1001.000",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1000.660",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1000.569",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1000.253",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1000.100",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1000.050",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1000.030",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1000.006",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1000.001",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1000.000",
+                                 "tradeType":  "BUY"
+                             }
+                 },
+                 {
+                     "adv":  {
+                                 "price":  "1000.000",
+                                 "tradeType":  "BUY"
+                             }
+                 }
+             ]
+}

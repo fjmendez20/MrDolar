@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import { RATES, DEFAULT_RATE_KEY } from "../lib/rates";
 ---
 
 <!doctype html>
@@ -8,7 +9,10 @@ import "../styles/global.css";
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MrDolar — Conversor BCV</title>
-    <meta name="description" content="Conversor de dólares y euros a bolívares según tasa BCV" />
+    <meta
+      name="description"
+      content="Conversor de dólares, euros y USDT a bolívares según tasa BCV y mercado P2P de Binance"
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>
@@ -18,27 +22,40 @@ import "../styles/global.css";
         <p class="subtitle">Conversor BCV</p>
 
         <div class="tabs" role="tablist">
-          <button class="tab active" data-currency="USD" role="tab">$ USD</button>
-          <button class="tab" data-currency="EUR" role="tab">€ EUR</button>
+          {
+            RATES.map((rate) => (
+              <button
+                class:list={["tab", { active: rate.key === DEFAULT_RATE_KEY }]}
+                data-currency={rate.key}
+                title={rate.title}
+                type="button"
+                role="tab"
+              >
+                {rate.tab}
+              </button>
+            ))
+          }
         </div>
 
-        <div class="rate-bar" id="rate-primary">
-          <span class="rate-label">Tasa USD</span>
-          <span>
-            <span class="rate-value" id="rate-usd">—</span>
-            <span class="rate-badge">BCV</span>
-          </span>
-        </div>
-
-        <div class="rate-bar secondary" id="rate-secondary">
-          <span class="rate-label">Tasa EUR</span>
-          <span class="rate-value" id="rate-eur">—</span>
-        </div>
+        {
+          RATES.map((rate, i) => (
+            <div
+              class:list={["rate-bar", { active: rate.key === DEFAULT_RATE_KEY }]}
+              data-currency={rate.key}
+            >
+              <span class="rate-label">{rate.rateLabel}</span>
+              <span>
+                <span class="rate-value" id={`rate-${rate.key}`}>—</span>
+                {i === 0 && <span class="rate-badge">BCV</span>}
+              </span>
+            </div>
+          ))
+        }
 
         <div class="form-group">
-          <label for="from-amount" id="from-label">Dólares (USD)</label>
+          <label for="from-amount" id="from-label">{RATES[0].inputLabel}</label>
           <div class="input-wrapper">
-            <span class="currency-prefix" id="from-symbol">$</span>
+            <span class="currency-prefix" id="from-symbol">{RATES[0].symbol}</span>
             <input type="number" id="from-amount" placeholder="0.00" step="any" min="0" />
             <button class="paste-btn" id="paste-from" type="button" aria-label="Pegar" title="Pegar">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -81,24 +98,31 @@ import "../styles/global.css";
     </main>
 
     <script>
+      import { RATES, DEFAULT_RATE_KEY, findRate, emptyRates } from "../lib/rates";
+      import { parsePasteValue } from "../lib/parse";
+
       const API_URL = "/api/tasa/public";
-      const CACHE_KEY = "mrdolar_rates";
+      const CACHE_KEY = "mrdolar_rates_v2";
       const CACHE_TS_KEY = "mrdolar_rates_ts";
+      const CACHE_TTL = 600_000;
 
       const fromInput = document.getElementById("from-amount");
       const toInput = document.getElementById("to-amount");
       const pasteFromBtn = document.getElementById("paste-from");
       const pasteToBtn = document.getElementById("paste-to");
       const resultText = document.getElementById("result-text");
-      const rateUsd = document.getElementById("rate-usd");
-      const rateEur = document.getElementById("rate-eur");
       const copyBtn = document.getElementById("copy-btn");
       const tabs = document.querySelectorAll(".tab");
+      const rateBars = document.querySelectorAll(".rate-bar[data-currency]");
       const fromLabel = document.getElementById("from-label");
       const fromSymbol = document.getElementById("from-symbol");
 
-      let rates = { usd: 0, eur: 0 };
-      let selected = "USD";
+      const rateValueEls = Object.fromEntries(
+        RATES.map((rate) => [rate.key, document.getElementById(`rate-${rate.key}`)])
+      );
+
+      let rates = emptyRates();
+      let selectedKey = DEFAULT_RATE_KEY;
       let activeSource = "from";
       let lastBsAmount = 0;
 
@@ -115,7 +139,15 @@ import "../styles/global.css";
       }
 
       function getRate() {
-        return selected === "USD" ? rates.usd : rates.eur;
+        return rates[selectedKey];
+      }
+
+      function getSymbol() {
+        return findRate(selectedKey).symbol;
+      }
+
+      function hasAnyRate() {
+        return RATES.some((rate) => rates[rate.key]);
       }
 
       function convert() {
@@ -132,8 +164,7 @@ import "../styles/global.css";
           const bs = val * tasa;
           lastBsAmount = bs;
           toInput.value = fmt(bs);
-          const sym = selected === "USD" ? "$" : "€";
-          setResult(`${sym} ${fmt(val)} = Bs ${fmt(bs)}`);
+          setResult(`${getSymbol()} ${fmt(val)} = Bs ${fmt(bs)}`);
         } else {
           const val = parseFloat(toInput.value);
           if (isNaN(val) || val <= 0) {
@@ -144,8 +175,7 @@ import "../styles/global.css";
           lastBsAmount = val;
           const converted = val / tasa;
           fromInput.value = fmt(converted);
-          const sym = selected === "USD" ? "$" : "€";
-          setResult(`Bs ${fmt(val)} = ${sym} ${fmt(converted)}`);
+          setResult(`Bs ${fmt(val)} = ${getSymbol()} ${fmt(converted)}`);
         }
       }
 
@@ -166,32 +196,6 @@ import "../styles/global.css";
         toInput.value = fromVal;
         activeSource = activeSource === "from" ? "to" : "from";
         convert();
-      }
-
-      function parsePasteValue(text) {
-        let t = text
-          .trim()
-          .replace(/[$€£]/g, "")
-          .replace(/bs\.?\s*/gi, "")
-          .replace(/\s/g, "");
-        if (!t || !/^[\d.,]+$/.test(t)) return null;
-
-        const dots = (t.match(/\./g) || []).length;
-        const commas = (t.match(/,/g) || []).length;
-
-        if (dots && commas) {
-          t =
-            t.lastIndexOf(".") > t.lastIndexOf(",")
-              ? t.replace(/,/g, "")
-              : t.replace(/\./g, "").replace(",", ".");
-        } else if (commas) {
-          t = t.replace(/,/g, ".");
-        } else if (dots > 1) {
-          t = t.replace(/\./g, "");
-        }
-
-        const num = parseFloat(t);
-        return isNaN(num) ? null : num;
       }
 
       async function readClipboardValue() {
@@ -242,34 +246,45 @@ import "../styles/global.css";
         }
       }
 
-      function selectTab(currency) {
-        selected = currency;
-        tabs.forEach((t) => t.classList.toggle("active", t.dataset.currency === currency));
+      function selectTab(key) {
+        selectedKey = key;
+        const def = findRate(key);
 
-        const sym = currency === "USD" ? "$" : "€";
-        fromSymbol.textContent = sym;
-        fromLabel.textContent = currency === "USD" ? "Dólares (USD)" : "Euros (EUR)";
+        tabs.forEach((t) => t.classList.toggle("active", t.dataset.currency === key));
+        rateBars.forEach((bar) =>
+          bar.classList.toggle("active", bar.dataset.currency === key)
+        );
+        fromSymbol.textContent = def.symbol;
+        fromLabel.textContent = def.inputLabel;
 
-        const tasa = getRate();
-        if (tasa) {
-          rateUsd.textContent = `Bs ${fmt(rates.usd)}`;
-          rateEur.textContent = `Bs ${fmt(rates.eur)}`;
-          const primaryRate = document.getElementById("rate-primary");
-          const secondaryRate = document.getElementById("rate-secondary");
-          if (currency === "USD") {
-            primaryRate.style.display = "flex";
-            secondaryRate.style.display = "flex";
-          } else {
-            primaryRate.style.display = "flex";
-            secondaryRate.style.display = "flex";
-          }
-          convert();
+        if (!getRate()) {
+          setResult("Tasa no disponible para esta moneda", true);
+          return;
         }
+        convert();
       }
 
       function updateRatesUI() {
-        rateUsd.textContent = rates.usd ? `Bs ${fmt(rates.usd)}` : "—";
-        rateEur.textContent = rates.eur ? `Bs ${fmt(rates.eur)}` : "—";
+        for (const rate of RATES) {
+          const el = rateValueEls[rate.key];
+          if (!el) continue;
+          const value = rates[rate.key];
+          el.textContent = value ? `Bs ${fmt(value)}` : "—";
+        }
+      }
+
+      function applyRates(payload) {
+        for (const rate of RATES) {
+          const value = Number(payload?.[rate.key]);
+          if (Number.isFinite(value) && value > 0) rates[rate.key] = value;
+        }
+      }
+
+      function payloadHasRate(payload) {
+        return RATES.some((rate) => {
+          const value = Number(payload?.[rate.key]);
+          return Number.isFinite(value) && value > 0;
+        });
       }
 
       async function fetchRates() {
@@ -278,47 +293,55 @@ import "../styles/global.css";
           if (!res.ok) throw new Error("Error al obtener tasas");
           const data = await res.json();
           if (data.error) throw new Error(data.error);
-          rates.usd = data.usd || 0;
-          rates.eur = data.eur || 0;
-          if (!rates.usd && !rates.eur) throw new Error("Tasas no disponibles");
+          if (!payloadHasRate(data)) throw new Error("Tasas no disponibles");
+
+          applyRates(data);
 
           localStorage.setItem(CACHE_KEY, JSON.stringify(rates));
           localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
           updateRatesUI();
-          const tasa = getRate();
-          if (tasa) convert();
+          if (getRate()) convert();
           return true;
         } catch {
           return false;
         }
       }
 
-      function loadCachedRates() {
+      function readCachedRates() {
         const raw = localStorage.getItem(CACHE_KEY);
-        const ts = localStorage.getItem(CACHE_TS_KEY);
-        if (raw && ts) {
-          const age = Date.now() - Number(ts);
-          if (age < 3_600_000) {
-            rates = JSON.parse(raw);
-            updateRatesUI();
-            const tasa = getRate();
-            if (tasa) convert();
-            return true;
-          }
+        if (!raw) return false;
+
+        try {
+          applyRates(JSON.parse(raw));
+        } catch {
+          return false;
         }
-        return false;
+        if (!hasAnyRate()) return false;
+
+        updateRatesUI();
+        if (getRate()) convert();
+        return true;
+      }
+
+      function cacheIsFresh() {
+        const ts = localStorage.getItem(CACHE_TS_KEY);
+        return !!ts && Date.now() - Number(ts) < CACHE_TTL;
       }
 
       async function init() {
-        const hasCache = loadCachedRates();
+        const hasCache = readCachedRates();
         const ok = await fetchRates();
-        if (!ok && !hasCache) {
+        if (ok) return;
+        if (!hasCache) {
           setResult("No se pudieron obtener las tasas", true);
           return;
         }
-        if (!ok && hasCache) {
-          setResult("Usando tasas guardadas", true);
-        }
+        setResult(
+          cacheIsFresh()
+            ? "No se pudieron actualizar las tasas"
+            : "Usando tasas guardadas",
+          true
+        );
       }
 
       tabs.forEach((tab) =>

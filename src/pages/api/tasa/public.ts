@@ -1,18 +1,28 @@
 import type { APIRoute } from "astro";
-import { getRates } from "../../../lib/bcv";
+import { getBcvRates, getP2PRates } from "../../../lib/rates-server";
+import { RATES, type RatesPayload } from "../../../lib/rates";
 
 export const GET: APIRoute = async () => {
   try {
-    const { usd, eur } = await getRates();
+    const [bcv, p2p] = await Promise.all([getBcvRates(), getP2PRates()]);
 
-    if (!usd && !eur) {
+    const rates: RatesPayload = {
+      usd: bcv?.usd ?? null,
+      eur: bcv?.eur ?? null,
+      usdtBuy: p2p?.usdtBuy ?? null,
+      usdtSell: p2p?.usdtSell ?? null,
+    };
+
+    const hayAlguna = RATES.some((r) => rates[r.key]);
+
+    if (!hayAlguna) {
       return new Response(
         JSON.stringify({ error: "No se encontraron tasas en la página" }),
         { status: 502 }
       );
     }
 
-    return new Response(JSON.stringify({ usd, eur }), {
+    return new Response(JSON.stringify(rates), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
